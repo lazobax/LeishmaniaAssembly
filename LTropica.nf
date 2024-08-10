@@ -5,7 +5,9 @@ params.s3bucket = "s3://ltropica-data/Lei012024_HiFi.fastq.gz"
 
 workflow assembly {
     short_reads = download_short_reads(params.shortReadAccession)
-    flye_assembly = Flye_long_read_assembly(params.s3bucket)
+    long_reads = download_long_reads(params.s3bucket)
+    
+    flye_assembly = Flye_long_read_assembly(long_reads)
 
     map_short_reads_minimap2(short_reads, flye_assembly)
     index_assembly_samtools(flye_assembly)
@@ -47,7 +49,7 @@ process download_short_reads {
     input:
         val accession
     output:
-        path("${x}_{1,2}.fastq")
+        path("${accession}_{1,2}.fastq")
     conda 'sra-tools=2.10.9'
     script:
     """
@@ -56,17 +58,28 @@ process download_short_reads {
     """
 }
 
+process download_long_reads{
+    input:
+        "s3"
+    output:
+        "longRead"
+    script:
+    '''
+    mv s3 longRead
+    '''
+}
+
 
 process Flye_long_read_assembly{
 
     input:
-        path s3bucket
+        path "longRead.fastq.gz"
     output:
         path "assembly.fasta"
     conda "flye=2.8.2"
     script:
     '''
-    flye --pacbio-hifi ${longRead} --genome-size 35m --threads $task.cpus
+    flye --pacbio-hifi ${longRead} --genome-size 35m --threads 22
     '''
 
 
@@ -96,7 +109,7 @@ process map_short_reads_minimap2{
     conda 'minimap2=2.17'
     script:
     '''
-    minimap2 -t $task.cpus -ax sr assembly read_1 read_2 > PE.fastq
+    minimap2 -t 22 -ax sr assembly read_1 read_2 > PE.fastq
     '''
 
 }
@@ -111,7 +124,7 @@ process view_short_reads_samtools{
     conda 'samtools=1.11'
     script:
     '''
-    samtools view -@ $task.cpus index PE.sam > PE.bam
+    samtools view -@ 22 index PE.sam > PE.bam
     '''
 
 }
@@ -124,7 +137,7 @@ process sort_short_reads_samtools{
     conda 'samtools=1.11'
     script:
     '''
-    samtools sort -@ $task.cpus PE -o PE_sort
+    samtools sort -@ 22 PE -o PE_sort
     '''
 }
 
@@ -136,7 +149,7 @@ process index_short_reads_samtools{
     conda 'samtools=1.11'
     script:
     '''
-    samtools index -@ $task.cpus PE_sort > PE_index
+    samtools index -@ 22 PE_sort > PE_index
     '''
 }
 
@@ -149,7 +162,7 @@ process mpileUP_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools mpileup --threads $task.cpus -Ou -d 1000000 -f assembly PE_sort | bcftools call -mv -Oz -o PE.vcf.gz"
+    bcftools mpileup --threads 22 -Ou -d 1000000 -f assembly PE_sort | bcftools call -mv -Oz -o PE.vcf.gz"
     '''
 }
 
@@ -162,7 +175,7 @@ process norm_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools norm --threads $task.cpus -f assembly PE.vcf.gz -Ob -o PE.norm.bcf
+    bcftools norm --threads 22 -f assembly PE.vcf.gz -Ob -o PE.norm.bcf
     '''
 
 }
@@ -176,7 +189,7 @@ process filter_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools filter --threads $task.cpus --IndelGap 5 PE.norm -Ob -o PE.norm.flt-indels.bcf
+    bcftools filter --threads 22 --IndelGap 5 PE.norm -Ob -o PE.norm.flt-indels.bcf
     '''
     
 }
@@ -190,7 +203,7 @@ process index_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools index --threads $task.cpus PE.norm.indels.bcf -o PE.norm.indels.csi
+    bcftools index --threads 22 PE.norm.indels.bcf -o PE.norm.indels.csi
     '''
 
 }
@@ -220,7 +233,7 @@ process polish_assembly_pilon{
     conda 'pilon=1.23'
     script:
     '''
-    pilon --threads $task.cpus -Xmx300000M --genome assembly --bam PEsort.bam 
+    pilon --threads 22 -Xmx300000M --genome assembly --bam PEsort.bam 
     '''
 }
 
@@ -246,7 +259,7 @@ process map_polished_assembly_minimap2{
     conda 'minimap2=2.17'
     script:
     '''
-    minimap2 -t $task.cpus -ax sr pilon.fasta read_1 read_2 > PE.sam
+    minimap2 -t 22 -ax sr pilon.fasta read_1 read_2 > PE.sam
     '''
 }
 
@@ -260,7 +273,7 @@ process view_polished_assembly_samtools{
     conda 'samtools=1.11'
     script:
     '''
-    samtools view -@ $task.cpus -bt polishedAssIx PE.sam > PE.bam
+    samtools view -@ 22 -bt polishedAssIx PE.sam > PE.bam
     '''
 }
 
@@ -272,7 +285,7 @@ process sort_polished_assembly_samtools{
     conda 'samtools=1.11'
     script:
     '''
-    samtools sort -@ $task.cpus PE.bam -o PE_sort.bam
+    samtools sort -@ 22 PE.bam -o PE_sort.bam
     '''
 }
 
@@ -285,7 +298,7 @@ process mpileup_polished_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools mpileup --threads $task.cpus -Ou -d 1000000 -f polishedAssembly PE_sort.bam | bcftools call -mv -Oz -o PE.vcf.gz
+    bcftools mpileup --threads 22 -Ou -d 1000000 -f polishedAssembly PE_sort.bam | bcftools call -mv -Oz -o PE.vcf.gz
     '''
 }
 
@@ -298,7 +311,7 @@ process norm_polished_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools norm --threads $task.cpus -f polishedAssembly PE.vcf.gz -Ob -o PE.norm.inde.bcf
+    bcftools norm --threads 22 -f polishedAssembly PE.vcf.gz -Ob -o PE.norm.inde.bcf
     '''
 }
 
@@ -310,7 +323,7 @@ process filter_polished_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools filter --threads $task.cpus --IndelGap 5 PE.norm.bcf -Ob -o PE.norm.indels.bcf
+    bcftools filter --threads 22 --IndelGap 5 PE.norm.bcf -Ob -o PE.norm.indels.bcf
     '''
 }
 
@@ -322,7 +335,7 @@ process index_polished_assembly_bcftools{
     conda 'bcftools=1.11'
     script:
     '''
-    bcftools index --threads $task.cpus PE.norm.indels.bcf -o PE.norm.indels.bcf.csi
+    bcftools index --threads 22 PE.norm.indels.bcf -o PE.norm.indels.bcf.csi
     '''
 }
 
@@ -364,6 +377,7 @@ process sort_polished_assembly_funannotate{
 }
 
 process download_reference_genome_ragoo{
+
     output:
         path "reference"
     script:
@@ -382,7 +396,7 @@ process arrange_assembly_ragoo{
     conda 'ragoo=1.1'
     script:
     '''
-    ragoo.py -t $task.cpus -C -T sr -b -g 0 -R shortReads polishedAssembly reference
+    ragoo.py -t 22 -C -T sr -b -g 0 -R shortReads polishedAssembly reference
     '''
 }
 
@@ -429,7 +443,7 @@ process qc_assemblies_quast{
     container 'quay.io/biocontainers/quast:5.0.1--py27pl526ha92aebf_0'
     script:
     '''
-    quast.py --eukaryote --circos --threads $task.cpus --output-dir . flye flyeConsensus pilon pilonConsensus ragoo.fasta funannotate genome
+    quast.py --eukaryote --circos --threads 22 --output-dir . flye flyeConsensus pilon pilonConsensus ragoo.fasta funannotate genome
     '''
 }
 
