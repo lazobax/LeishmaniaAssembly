@@ -1,48 +1,47 @@
-nextflow.enable.dsl=2
 
 params.shortReadAccession = "SRR12368184"
 params.s3bucket = "s3://ltropica-data/Lei012024_HiFi.fastq.gz"
 
-workflow assembly {
+workflow {
     short_reads = download_short_reads(params.shortReadAccession)
-    long_reads = download_long_reads(params.s3bucket)
+    // // long_reads = download_long_reads(params.s3bucket)
     
-    flye_assembly = Flye_long_read_assembly(long_reads)
+    // flye_assembly = Flye_long_read_assembly(long_reads)
 
-    map_short_reads_minimap2(short_reads, flye_assembly)
-    index_assembly_samtools(flye_assembly)
-    view_short_reads_samtools(map_short_reads_minimap2.out, index_assembly_samtools.out)
-    sort_short_reads_samtools(view_short_reads_samtools.out)
-    index_short_reads_samtools(sort_short_reads_samtools.out)
+    // map_short_reads_minimap2(short_reads, flye_assembly)
+    // index_assembly_samtools(flye_assembly)
+    // view_short_reads_samtools(map_short_reads_minimap2.out, index_assembly_samtools.out)
+    // sort_short_reads_samtools(view_short_reads_samtools.out)
+    // index_short_reads_samtools(sort_short_reads_samtools.out)
 
-    mpileUP_assembly_bcftools(sort_short_reads_samtools.out, flye_assembly)
-    norm_assembly_bcftools(mpileUP_assembly_bcftools.out, flye_assembly)
-    filter_assembly_bcftools(norm_assembly_bcftools.out)
-    index_assembly_bcftools(filter_assembly_bcftools.out)
-    consensus_assembly_bcftools(index_assembly_bcftools.out, filter_assembly_bcftools.out, flye_assembly)
+    // mpileUP_assembly_bcftools(sort_short_reads_samtools.out, flye_assembly)
+    // norm_assembly_bcftools(mpileUP_assembly_bcftools.out, flye_assembly)
+    // filter_assembly_bcftools(norm_assembly_bcftools.out)
+    // index_assembly_bcftools(filter_assembly_bcftools.out)
+    // consensus_assembly_bcftools(index_assembly_bcftools.out, filter_assembly_bcftools.out, flye_assembly)
 
-    polish_assembly_pilon(index_short_reads_samtools.out, sort_short_reads_samtools.out, flye_assembly)
-    index_polished_assembly_samtools(polish_assembly_pilon.out)
-    map_polished_assembly_minimap2(short_reads, polish_assembly_pilon.out)
-    view_polished_assembly_samtools(map_polished_assembly_minimap2.out, polish_assembly_pilon.out, index_polished_assembly_samtools.out)
-    sort_polished_assembly_samtools(view_polished_assembly_samtools.out)
-    mpileup_polished_assembly_bcftools(sort_polished_assembly_samtools.out, polish_assembly_pilon.out)
-    norm_polished_assembly_bcftools(mpileup_polished_assembly_bcftools.out, polish_assembly_pilon.out)
-    filter_polished_assembly_bcftools(norm_polished_assembly_bcftools.out)
-    index_polished_assembly_bcftools(filter_polished_assembly_bcftools.out)
-    consensus_polished_assembly_bcftools(index_polished_assembly_bcftools.out, filter_polished_assembly_bcftools.out, polish_assembly_pilon.out)
+    // polish_assembly_pilon(index_short_reads_samtools.out, sort_short_reads_samtools.out, flye_assembly)
+    // index_polished_assembly_samtools(polish_assembly_pilon.out)
+    // map_polished_assembly_minimap2(short_reads, polish_assembly_pilon.out)
+    // view_polished_assembly_samtools(map_polished_assembly_minimap2.out, polish_assembly_pilon.out, index_polished_assembly_samtools.out)
+    // sort_polished_assembly_samtools(view_polished_assembly_samtools.out)
+    // mpileup_polished_assembly_bcftools(sort_polished_assembly_samtools.out, polish_assembly_pilon.out)
+    // norm_polished_assembly_bcftools(mpileup_polished_assembly_bcftools.out, polish_assembly_pilon.out)
+    // filter_polished_assembly_bcftools(norm_polished_assembly_bcftools.out)
+    // index_polished_assembly_bcftools(filter_polished_assembly_bcftools.out)
+    // consensus_polished_assembly_bcftools(index_polished_assembly_bcftools.out, filter_polished_assembly_bcftools.out, polish_assembly_pilon.out)
     
-    aggregate_reads(short_reads)
+    // aggregate_reads(short_reads)
 
-    sort_polished_assembly_funannotate(consensus_polished_assembly_bcftools.out)
+    // sort_polished_assembly_funannotate(consensus_polished_assembly_bcftools.out)
 
-    download_reference_genome_ragoo()
+    // download_reference_genome_ragoo()
 
-    arrange_assembly_ragoo(aggregate_reads.out, sort_polished_assembly_funannotate.out, download_reference_genome_ragoo.out)
-    clean_polished_assembly_funannotate(arrange_assembly_ragoo.out)
-    final_assembly(clean_polished_assembly_funannotate.out)
+    // arrange_assembly_ragoo(aggregate_reads.out, sort_polished_assembly_funannotate.out, download_reference_genome_ragoo.out)
+    // clean_polished_assembly_funannotate(arrange_assembly_ragoo.out)
+    // final_assembly(clean_polished_assembly_funannotate.out)
 
-    qc_assemblies_quast(flye_assembly, consensus_assembly_bcftools.out, polish_assembly_pilon.out, consensus_polished_assembly_bcftools.out, arrange_assembly_ragoo.out, clean_polished_assembly_funannotate.out, final_assembly.out)
+    // qc_assemblies_quast(flye_assembly, consensus_assembly_bcftools.out, polish_assembly_pilon.out, consensus_polished_assembly_bcftools.out, arrange_assembly_ragoo.out, clean_polished_assembly_funannotate.out, final_assembly.out)
 }
 
 process download_short_reads {
@@ -109,7 +108,7 @@ process map_short_reads_minimap2{
     conda 'minimap2=2.17'
     script:
     '''
-    minimap2 -t 22 -ax sr assembly read_1 read_2 > PE.fastq
+    minimap2 -t 22 -ax sr assembly read_1 read_2 > PE.sam
     '''
 
 }

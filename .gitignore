@@ -1,2 +1,11 @@
 nextflow.config
 *.gz
+.nextflow/
+1*/
+.nextflow.log*
+work/
+data/
+DB/
+pre-tests/
+results/
+
