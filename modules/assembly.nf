@@ -1,12 +1,9 @@
 workflow{
-    reads = channel.fromPath("results/qc/adapterFilt/reads.filt.fastq")
-    hifiasm(reads)
-
-
+    
 
 }
 
-process hifiasm{
+process hifiasmPrimary{
     
     conda 'hifiasm'
     publishDir "results/assembly"
@@ -23,39 +20,33 @@ process hifiasm{
 
 process gfaToFasta{
 
-    conda 'gfastats'
+    publishDir 'results/assemblyFasta'
 
     input:
         path p_assembly
         path a_assembly
     output:
-        path 
+        path "LSHT.p_ctg.fa"
+        path "LSHT.a_ctg.fa"
     script:
     """
-    gfastats ${p_assembly} -o fa
-    gfastats ${a_assembly} -o fa
+    awk '/^S/{print ">"$2;print $3}' ${p_assembly} > LSHT.p_ctg.fa
+    awk '/^S/{print ">"$2;print $3}' ${a_assembly} > LSHT.a_ctg.fa
     """
 }
 
-process gfaStats{
+process quastOnAssemblies{
 
-    conda 'gfastats'
+    conda 'quast'
 
     input:
         path p_assembly
         path a_assembly
     output:
-        path "gfastats_on_pa_assemblies.txt"
+        path "quast_results/report.txt"
     script:
     """
-    gfastats summary -i primary_contigs.gfa -g 11747160 -o primary_stats.txt
-    gfastats summary -i alternate_contigs.gfa -g 11747160 -o alternate_stats.txt
-
-    # Join the two output files
-    paste primary_stats.txt alternate_stats.txt > joined_stats.txt
-
-    # Filter out lines containing "scaffold"
-    grep -vi "scaffold" joined_stats.txt > gfastats_on_pa_assemblies.txt
+    quast ${p_assembly} $
     """
 }
 
@@ -69,8 +60,8 @@ process busco{
         path "BUSCO_*"
     script:
     """
-    busco -i p_assembly -m genome -l euglenozoa_odb10 -c ${task.cpus} -o p_results --metaeuk
-    busco -i a_assembly -m genome -l euglenozoa_odb10 -c ${task.cpus} -o a_results --metaeuk
+    busco -i ${p_assembly} -m genome -l euglenozoa_odb10 -c ${task.cpus} -o p_results --metaeuk
+    busco -i a_assembly} -m genome -l euglenozoa_odb10 -c ${task.cpus} -o a_results --metaeuk
     """
 }
 
