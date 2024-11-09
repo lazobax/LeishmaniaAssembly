@@ -1,6 +1,8 @@
 workflow{
-    
-
+include { hifiasmDefault } from './hifiComparative.nf'
+    reads = Channel.fromPath("data/downSampledReads.fastq")
+    hifiasmDefault(reads)
+    gfaToFasta(hifiasmDefault.out[0], hifiasmDefault.out[1], hifiasmDefault.out[2])
 }
 
 process hifiasmDefault{
