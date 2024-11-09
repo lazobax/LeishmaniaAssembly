@@ -1,22 +1,25 @@
 params.kmerLen = 31
 params.readLen = 17000
+params.downPer = 0.5
+params.read = ''
 
 
 workflow {
 
-    originalReads = channel.fromPath("Lei012024_HiFi.fastq.gz")
+    originalReads = channel.fromPath("$params.read")
     originalReads.view()
 
-    downSample(originalReads)
-    database = channel.fromPath("DB/*").collect()
-    adapterFilt(downSample.out, database)
+    //ch_reads = downSample(originalReads)
+    // database = channel.fromPath("DB/*").collect()
+    //adapterFilt(downSample.out, database)
+    ch_reads = originalReads
+    // fastqcReads(ch_reads)
 
-    fastqcReads(adapterFilt.out[0])
+    countKmers(ch_reads)
+    matrix(countKmers.out[1])
 
-    countKmers(adapterFilt.out[0])
-
-    genomeScopeScript = channel.fromPath("genomescope.R")
-    genomeScope(countKmers.out, genomeScopeScript)
+    // genomeScopeScript = channel.fromPath("Scripts/genomescope.R")
+    // genomeScope(countKmers.out[0], genomeScopeScript)
 
 }
 
@@ -24,6 +27,7 @@ process downSample{
 
     conda 'bioconda::seqkit=2.8.2'
     cpus 8
+    publishDir 'data'
 
     input:
         path originalReads
@@ -31,7 +35,7 @@ process downSample{
         path 'downSampledReads.fastq'
     script:
     """
-    seqkit -j ${task.cpus} sample -p 0.02 -s 100 $originalReads > downSampledReads.fastq
+    seqkit -j ${task.cpus} sample -p ${params.downPer} -s 100 $originalReads > downSampledReads.fastq
     """
 
 }
@@ -80,6 +84,7 @@ process adapterFilt{
 
 }
 
+
 process fastqcReads{
 
     conda 'fastqc'
@@ -99,16 +104,33 @@ process fastqcReads{
 process countKmers{
 
     conda 'bioconda::kmer-jellyfish=2.3.1'
+    publishDir 'results/qc/jellyfish'
 
     input:
         path reads
     output:
         path 'reads.histo'
+        path 'reads.jf'
     script:
     """
     jellyfish count -C -m ${params.kmerLen} -s 1000000000 -t ${task.cpus} ${reads} -o reads.jf
     jellyfish histo -t ${task.cpus} reads.jf > reads.histo
     """
+}
+
+process matrix{
+    conda 'kat'
+    publishDir 'results/matrix'
+
+    input:
+        path hash
+    output:
+        path "*png"
+    script:
+    """
+    kat gcp ${hash}
+    """
+
 }
 
 process genomeScope{
@@ -126,3 +148,4 @@ process genomeScope{
     Rscript ${genomeScopeScript} ${histogram} ${params.kmerLen} ${params.readLen} results
     """
 }
+
