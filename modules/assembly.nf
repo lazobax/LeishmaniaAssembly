@@ -34,8 +34,8 @@ process gfaToFasta{
         path "LSHT.p_ctg.fa"
     script:
     """
-    awk '/^S/{print ">"$2;print $3}' ${p_assembly} > LSHT.p_ctg.fa
-    awk '/^S/{print ">"$2;print $3}' ${hap1_assembly} > LSHT.hap1_ctg.fa
-    awk '/^S/{print ">"$2;print $3}' ${hap2_assembly} > LSHT.hap2_ctg.fa
+    awk '/^S/{print ">"\$2;print \$3}' ${p_assembly} > LSHT.p_ctg.fa
+    awk '/^S/{print ">"\$2;print \$3}' ${hap1_assembly} > LSHT.hap1_ctg.fa
+    awk '/^S/{print ">"\$2;print \$3}' ${hap2_assembly} > LSHT.hap2_ctg.fa
     """
 }
